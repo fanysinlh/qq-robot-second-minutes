@@ -23,6 +23,38 @@ class TomatoScheduler:
         # 设置定时任务
         self._setup_scheduled_jobs()
     
+    def _safe_call_async(self, callback, *args, **kwargs):
+        """安全地调用异步回调函数"""
+        if callback is None:
+            return
+        
+        try:
+            # 检查是否是异步函数
+            if asyncio.iscoroutinefunction(callback):
+                # 如果有运行中的事件循环，在新线程中运行
+                try:
+                    loop = asyncio.get_running_loop()
+                    # 在新线程中运行异步函数
+                    import threading
+                    def run_in_thread():
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            new_loop.run_until_complete(callback(*args, **kwargs))
+                        finally:
+                            new_loop.close()
+                    
+                    thread = threading.Thread(target=run_in_thread, daemon=True)
+                    thread.start()
+                except RuntimeError:
+                    # 没有运行中的事件循环，直接运行
+                    asyncio.run(callback(*args, **kwargs))
+            else:
+                # 同步函数，直接调用
+                callback(*args, **kwargs)
+        except Exception as e:
+            print(f"调用通知回调函数失败: {e}")
+    
     def _setup_scheduled_jobs(self):
         """设置定时任务"""
         # 每天早上8点检查当天截止的任务
@@ -55,7 +87,7 @@ class TomatoScheduler:
                 # 为每个用户发送提醒
                 for user_id, tasks in user_tasks.items():
                     message = self._format_daily_reminder(tasks)
-                    asyncio.create_task(self.notification_callback(user_id, message))
+                    self._safe_call_async(self.notification_callback, user_id, message)
                     
             print(f"[{datetime.now()}] 每日提醒任务完成，提醒了 {len(daily_tasks)} 个任务")
             
@@ -79,7 +111,7 @@ class TomatoScheduler:
                 # 为每个用户发送过期通知
                 for user_id, tasks in user_expired.items():
                     message = self._format_expired_notification(tasks)
-                    asyncio.create_task(self.notification_callback(user_id, message))
+                    self._safe_call_async(self.notification_callback, user_id, message)
             
             print(f"[{datetime.now()}] 过期任务处理完成，处理了 {len(expired_tasks)} 个任务")
             
@@ -105,7 +137,7 @@ class TomatoScheduler:
                 
                 for user_id, tasks in user_tasks.items():
                     message = self._format_hourly_reminder(tasks)
-                    asyncio.create_task(self.notification_callback(user_id, message))
+                    self._safe_call_async(self.notification_callback, user_id, message)
             
             print(f"[{datetime.now()}] 每小时提醒完成，提醒了 {len(upcoming_tasks)} 个任务")
             
@@ -131,7 +163,7 @@ class TomatoScheduler:
                 
                 for user_id, tasks in user_tasks.items():
                     message = self._format_urgent_reminder(tasks)
-                    asyncio.create_task(self.notification_callback(user_id, message))
+                    self._safe_call_async(self.notification_callback, user_id, message)
             
             print(f"[{datetime.now()}] 紧急提醒完成，提醒了 {len(urgent_tasks)} 个任务")
             
