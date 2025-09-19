@@ -1,0 +1,22 @@
+# QQ机器人配置
+appid: "102808275"
+secret: "cGuYCqVApU9oT9pVBrXDtaHyfM3kSAsa"
+
+# AI服务配置（可选）
+ai_service: "deepseek"  # 可选: deepseek, openai, zhipu, simple
+
+# DeepSeek配置（推荐使用）
+deepseek:
+  api_key: "sk-481bf52fa3fe49ecbc81a4317c55fdd5"
+  api_base: "https://api.deepseek.com/v1"
+  model: "deepseek-chat"
+
+# OpenAI配置（备选）
+openai:
+  api_key: "你的OpenAI API Key"
+  api_base: "https://api.openai.com/v1"
+  model: "gpt-3.5-turbo"
+
+# 其他配置
+database_path: "token_tomato.db"
+log_level: "INFO"
