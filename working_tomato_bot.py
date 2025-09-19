@@ -40,7 +40,7 @@ class WorkingTomatoBot(botpy.Client):
         self.scheduler = TomatoScheduler(self.task_manager, self._send_notification)
         
         # 命令前缀
-        self.command_prefix = "\\"
+        self.command_prefix = "/"
     
     async def on_ready(self):
         """机器人就绪事件"""
@@ -54,10 +54,10 @@ class WorkingTomatoBot(botpy.Client):
         print(f"🍅 系统已就绪！")
         print()
         print("📝 使用说明:")
-        print("• @机器人 \\help - 查看帮助")
-        print("• @机器人 \\cr 任务名称 截止时间 - 创建任务")
-        print("• @机器人 \\ch - 查看任务")
-        print("• @机器人 \\fi 任务ID - 完成任务")
+        print("• @机器人 /help - 查看帮助")
+        print("• @机器人 /cr 任务名称 截止时间 - 创建任务")
+        print("• @机器人 /ch - 查看任务")
+        print("• @机器人 /fi 任务ID - 完成任务")
         print("=" * 50)
     
     async def on_group_at_message_create(self, message: GroupMessage):
@@ -78,7 +78,7 @@ class WorkingTomatoBot(botpy.Client):
                 reply_text = await self._process_command(user_id, username, content)
             else:
                 # 非命令消息的默认回复
-                reply_text = f"👋 你好！我是代币番茄钟机器人！\n\n请发送命令，例如:\n• \\help - 查看帮助\n• \\cr 任务名 时间 - 创建任务"
+                reply_text = f"👋 你好！我是代币番茄钟机器人！\n\n请发送命令，例如:\n• /help - 查看帮助\n• /cr 任务名 时间 - 创建任务"
             
             # 使用demo.py的回复方式 - 关键是要指定content参数！
             await message.reply(content=reply_text)
@@ -107,7 +107,7 @@ class WorkingTomatoBot(botpy.Client):
             if content.startswith(self.command_prefix):
                 reply_text = await self._process_command(user_id, username, content)
             else:
-                reply_text = f"👋 你好 {username}！我是代币番茄钟机器人！\n\n请发送命令，例如:\n• \\help - 查看帮助"
+                reply_text = f"👋 你好 {username}！我是代币番茄钟机器人！\n\n请发送命令，例如:\n• /help - 查看帮助"
             
             # 频道消息回复
             await message.reply(content=reply_text)
@@ -135,7 +135,7 @@ class WorkingTomatoBot(botpy.Client):
             if content.startswith(self.command_prefix):
                 reply_text = await self._process_command(user_id, username, content)
             else:
-                reply_text = f"👋 你好 {username}！我是代币番茄钟机器人！\n\n请发送命令，例如:\n• \\help - 查看帮助"
+                reply_text = f"👋 你好 {username}！我是代币番茄钟机器人！\n\n请发送命令，例如:\n• /help - 查看帮助"
             
             # 私信回复
             await message.reply(content=reply_text)
@@ -155,7 +155,7 @@ class WorkingTomatoBot(botpy.Client):
         parts = command_text.split()
         
         if not parts:
-            return "❓ 请输入有效命令，使用 \\help 查看帮助"
+            return "❓ 请输入有效命令，使用 /help 查看帮助"
         
         command = parts[0].lower()
         
@@ -181,7 +181,7 @@ class WorkingTomatoBot(botpy.Client):
                 return self._get_help_text()
             
             else:
-                return f"❓ 未知命令: {command}\n使用 \\help 查看帮助信息"
+                return f"❓ 未知命令: {command}\n使用 /help 查看帮助信息"
                 
         except Exception as e:
             _log.error(f"处理命令时出错: {e}")
@@ -193,9 +193,9 @@ class WorkingTomatoBot(botpy.Client):
         
         if not match:
             return ("❌ 命令格式错误！\n\n"
-                   "正确格式：\\cr <任务名称> <截止时间>\n"
-                   "示例：\\cr 完成作业 明天 18:00\n"
-                   "      \\cr 锻炼身体 2小时后")
+                   "正确格式：/cr <任务名称> <截止时间>\n"
+                   "示例：/cr 完成作业 明天 18:00\n"
+                   "      /cr 锻炼身体 2小时后")
         
         task_name = match.group(1).strip()
         deadline_str = match.group(2).strip()
@@ -218,8 +218,8 @@ class WorkingTomatoBot(botpy.Client):
         """处理完成任务命令"""
         if len(parts) < 2:
             return ("❌ 命令格式错误！\n\n"
-                   "正确格式：\\fi <任务ID>\n"
-                   "示例：\\fi 1")
+                   "正确格式：/fi <任务ID>\n"
+                   "示例：/fi 1")
         
         try:
             task_id = int(parts[1])
@@ -248,7 +248,7 @@ class WorkingTomatoBot(botpy.Client):
                 if len(parts) > 2:
                     search_query = " ".join(parts[2:])
                 else:
-                    return "❌ 搜索命令需要指定关键词\n示例：\\ch -s 学习"
+                    return "❌ 搜索命令需要指定关键词\n示例：/ch -s 学习"
         
         return self.task_manager.query_tasks(user_id, query_type, search_query)
     
@@ -257,25 +257,25 @@ class WorkingTomatoBot(botpy.Client):
         return """🍅 代币番茄钟机器人使用指南
 
 📝 创建任务：
-\\cr <任务名称> <截止时间>
-示例：\\cr 完成作业 明天 18:00
-      \\cr 锻炼身体 2小时后
-      \\cr 学习Python 12-25 20:00
+/cr <任务名称> <截止时间>
+示例：/cr 完成作业 明天 18:00
+      /cr 锻炼身体 2小时后
+      /cr 学习Python 12-25 20:00
 
 ✅ 完成任务：
-\\fi <任务ID>
-示例：\\fi 1
+/fi <任务ID>
+示例：/fi 1
 
 📋 查询任务：
-\\ch        - 查看未完成任务
-\\ch -a     - 查看所有任务
-\\ch -f     - 查看已完成任务
-\\ch -s <关键词> - 搜索任务
-示例：\\ch -s 学习
+/ch        - 查看未完成任务
+/ch -a     - 查看所有任务
+/ch -f     - 查看已完成任务
+/ch -s <关键词> - 搜索任务
+示例：/ch -s 学习
 
 📊 其他命令：
-\\stats     - 查看个人统计
-\\help      - 显示帮助信息
+/stats     - 查看个人统计
+/help      - 显示帮助信息
 
 ⏰ 时间格式支持：
 • 2024-12-25 18:00
