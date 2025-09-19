@@ -34,8 +34,10 @@ class TomatoBot(botpy.Client):
         self.config = read(config_path)
         self.is_sandbox = is_sandbox
         
-        # 初始化父类 - 使用默认权限配置
-        intents = botpy.Intents.default()
+        # 初始化父类 - 使用最小权限配置避免4014错误
+        intents = botpy.Intents.none()  # 从无权限开始
+        intents.public_guild_messages = True  # 公开频道消息
+        # 注意：群聊权限可能需要特殊申请，暂时不启用
         super().__init__(intents=intents, is_sandbox=is_sandbox)
         
         # 初始化任务管理器
