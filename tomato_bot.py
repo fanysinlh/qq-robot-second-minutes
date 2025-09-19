@@ -136,17 +136,20 @@ class TomatoBot(botpy.Client):
     
     async def _handle_message(self, message: Message):
         """处理消息的核心逻辑"""
-        # 忽略机器人自己的消息
-        if message.author.bot:
+        # 忽略机器人自己的消息（安全检查bot属性）
+        if hasattr(message.author, 'bot') and message.author.bot:
             return
         
         content = message.content.strip()
-        user_id = message.author.id
+        
+        # 安全获取用户ID（群聊和频道使用不同的ID字段）
+        user_id = getattr(message.author, 'member_openid', 
+                         getattr(message.author, 'id', 'unknown_user'))
         
         # 安全获取用户名（群聊和频道可能有不同的属性）
         username = getattr(message.author, 'username', 
                           getattr(message.author, 'nick', 
-                                 getattr(message.author, 'name', f'用户{user_id}')))
+                                 getattr(message.author, 'name', f'用户{str(user_id)[:8]}')))
         
         # 移除@机器人的部分
         content = re.sub(r'<@!\d+>', '', content).strip()
@@ -162,7 +165,22 @@ class TomatoBot(botpy.Client):
             await self._process_command(message, user_id, username, command_text)
         except Exception as e:
             logging.error(f"处理命令时发生错误: {e}")
-            await message.reply(f"❌ 处理命令时发生错误: {str(e)}")
+            await self._safe_reply(message, f"❌ 处理命令时发生错误: {str(e)}")
+    
+    async def _safe_reply(self, message, reply_text: str):
+        """安全的回复方法 - 处理不同类型的消息"""
+        try:
+            # 检查是否是群聊消息
+            if hasattr(message, 'group_openid'):
+                # 群聊消息 - 由于权限限制，记录到日志
+                print(f"📨 群聊回复 (无权限): {reply_text}")
+                logging.info(f"群聊回复内容: {reply_text}")
+            else:
+                # 频道或私信消息 - 正常回复
+                await message.reply(reply_text)
+        except Exception as e:
+            logging.error(f"回复消息失败: {e}")
+            print(f"⚠️ 回复失败，内容: {reply_text}")
     
     async def _process_command(self, message: Message, user_id: str, username: str, command_text: str):
         """处理具体命令"""
@@ -190,14 +208,14 @@ class TomatoBot(botpy.Client):
         
         # 帮助命令
         elif command == "help":
-            await message.reply(self.help_text)
+            await self._safe_reply(message, self.help_text)
         
         # 管理员命令（可选）
         elif command == "admin" and self._is_admin(user_id):
             await self._handle_admin_command(message, parts)
         
         else:
-            await message.reply(f"❓ 未知命令: {command}\n使用 \\help 查看帮助信息")
+            await self._safe_reply(message, f"❓ 未知命令: {command}\n使用 \\help 查看帮助信息")
     
     async def _handle_create_task(self, message: Message, user_id: str, username: str, command_text: str):
         """处理创建任务命令"""
@@ -205,7 +223,7 @@ class TomatoBot(botpy.Client):
         match = re.match(r'cr\s+(.+?)\s+(.+)$', command_text, re.IGNORECASE)
         
         if not match:
-            await message.reply(
+            await self._safe_reply(message,
                 "❌ 命令格式错误！\n\n"
                 "正确格式：\\cr <任务名称> <截止时间>\n"
                 "示例：\\cr 完成作业 明天 18:00\n"
@@ -219,16 +237,16 @@ class TomatoBot(botpy.Client):
         
         # 验证任务名称
         if len(task_name) < 2:
-            await message.reply("❌ 任务名称至少需要2个字符")
+            await self._safe_reply(message, "❌ 任务名称至少需要2个字符")
             return
         
         if len(task_name) > 100:
-            await message.reply("❌ 任务名称不能超过100个字符")
+            await self._safe_reply(message, "❌ 任务名称不能超过100个字符")
             return
         
         # 创建任务
         success, response = self.task_manager.create_task(user_id, username, task_name, deadline_str)
-        await message.reply(response)
+        await self._safe_reply(message, response)
         
         if success:
             logging.info(f"用户 {username}({user_id}) 创建任务: {task_name}")
@@ -236,7 +254,7 @@ class TomatoBot(botpy.Client):
     async def _handle_finish_task(self, message: Message, user_id: str, parts: list):
         """处理完成任务命令"""
         if len(parts) < 2:
-            await message.reply(
+            await self._safe_reply(message,
                 "❌ 命令格式错误！\n\n"
                 "正确格式：\\fi <任务ID>\n"
                 "示例：\\fi 1\n\n"
@@ -247,12 +265,12 @@ class TomatoBot(botpy.Client):
         try:
             task_id = int(parts[1])
         except ValueError:
-            await message.reply("❌ 任务ID必须是数字")
+            await self._safe_reply(message, "❌ 任务ID必须是数字")
             return
         
         # 完成任务
         success, response = self.task_manager.complete_task(user_id, task_id)
-        await message.reply(response)
+        await self._safe_reply(message, response)
         
         if success:
             logging.info(f"用户 {user_id} 完成任务: {task_id}")
@@ -272,17 +290,17 @@ class TomatoBot(botpy.Client):
                 if len(parts) > 2:
                     search_query = " ".join(parts[2:])
                 else:
-                    await message.reply("❌ 搜索命令需要指定关键词\n示例：\\ch -s 学习")
+                    await self._safe_reply(message, "❌ 搜索命令需要指定关键词\n示例：\\ch -s 学习")
                     return
         
         # 查询任务
         response = self.task_manager.query_tasks(user_id, query_type, search_query)
-        await message.reply(response)
+        await self._safe_reply(message, response)
     
     async def _handle_stats(self, message: Message, user_id: str, username: str):
         """处理统计信息命令"""
         stats_text = self.task_manager.format_user_stats(user_id, username)
-        await message.reply(stats_text)
+        await self._safe_reply(message, stats_text)
     
     async def _handle_admin_command(self, message: Message, parts: list):
         """处理管理员命令（可选功能）"""
@@ -299,14 +317,14 @@ class TomatoBot(botpy.Client):
                          f"⏰ 定时任务数: {scheduler_status['total_jobs']}\n" \
                          f"🕒 下次运行: {scheduler_status['next_run_time']}\n"
             
-            await message.reply(status_text)
+            await self._safe_reply(message, status_text)
         
         elif admin_cmd == "restart_scheduler":
             # 重启调度器
             self.scheduler.stop()
             await asyncio.sleep(1)
             self.scheduler.start()
-            await message.reply("✅ 调度器已重启")
+            await self._safe_reply(message, "✅ 调度器已重启")
     
     def _is_admin(self, user_id: str) -> bool:
         """检查用户是否为管理员"""
